@@ -301,6 +301,17 @@ vi.mock("@/hooks/use-chat-session", () => ({
   useChatSession: () => mockUseChatSession,
 }));
 
+// The org provider config the tab resolves for its own `useChatSession`. The
+// compare columns must receive the very same object — each column composes
+// its own model list from it.
+const mockHostedOrgModelConfig = {
+  providers: [{ providerKey: "anthropic", enabled: true, hasSecret: true }],
+};
+
+vi.mock("@/hooks/use-hosted-org-model-config", () => ({
+  useHostedOrgModelConfig: () => mockHostedOrgModelConfig,
+}));
+
 const sampleLiveTraceEnvelope = {
   traceVersion: 1 as const,
   messages: [
@@ -763,6 +774,39 @@ describe("ChatTabV2 trace views", () => {
     expect(grid).toHaveClass("xl:grid-cols-3");
     expect(grid).not.toHaveClass("2xl:grid-cols-3");
     expect(screen.getByTestId("trace-view-tabs")).toBeInTheDocument();
+  });
+
+  it("hands every compare column the org provider config the tab resolves against", () => {
+    mockUseChatSession.availableModels = [
+      {
+        id: "anthropic/claude-haiku-4.5",
+        name: "Claude Haiku 4.5",
+        provider: "anthropic",
+        hosted: true,
+      },
+      // An org-key static from "Your providers" — the id is bare, so a column
+      // that cannot see the org config classifies it as `ollama`.
+      {
+        id: "claude-fable-5",
+        name: "Claude Fable 5",
+        provider: "anthropic",
+      },
+    ];
+    mockUseChatSession.selectedModelIds = [
+      "anthropic/claude-haiku-4.5",
+      "claude-fable-5",
+    ];
+    mockUseChatSession.multiModelEnabled = true;
+
+    render(<ChatTabV2 {...defaultProps} enableMultiModelChat={true} />);
+
+    const cardProps = mockMultiModelChatCard.mock.calls.map((call) => call[0]);
+    expect(cardProps.map((props) => String(props.model.id))).toEqual(
+      expect.arrayContaining(["anthropic/claude-haiku-4.5", "claude-fable-5"]),
+    );
+    for (const props of cardProps) {
+      expect(props.hostedOrgModelConfig).toBe(mockHostedOrgModelConfig);
+    }
   });
 
   it("keeps the single-model surface mounted while the model selector is open", () => {

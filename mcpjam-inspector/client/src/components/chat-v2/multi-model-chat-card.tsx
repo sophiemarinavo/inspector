@@ -20,6 +20,7 @@ import {
   formatErrorMessage,
 } from "@/components/chat-v2/shared/chat-helpers";
 import { useChatSession } from "@/hooks/use-chat-session";
+import type { OrgVisibleConfig } from "@/components/chat-v2/shared/model-helpers";
 import { getChatComposerInteractivity } from "@/hooks/use-chat-stop-controls";
 import type { ModelDefinition } from "@/shared/types";
 import type { ExecutionConfig } from "@/lib/chat-execution-config";
@@ -55,6 +56,19 @@ interface MultiModelChatCardProps {
   reasoningDisplayMode: ReasoningDisplayMode;
   executionConfig: ExecutionConfig;
   hostedContext?: HostedRuntimeContext;
+  /**
+   * The org's sanitized provider config, exactly as the host ChatTabV2 hands
+   * it to its own `useChatSession`. Each compare column re-resolves its pinned
+   * `modelId` against the model list ITS hook composes, and without this the
+   * column composes the local-BYOK list: every "Your providers" model (org-key
+   * statics such as `claude-fable-5`, OpenRouter/Bedrock selections, org
+   * Ollama and custom ids) is absent, the lookup misses, and the column falls
+   * back to `createLockedInitialModel`, whose bare-id classifier answers
+   * `ollama`. The server then asks the org for an Ollama provider it never
+   * configured. The playground column already forwards this; see
+   * `multi-model-playground-card.tsx`.
+   */
+  hostedOrgModelConfig?: OrgVisibleConfig;
   onSummaryChange: (summary: MultiModelCardSummary) => void;
   onHasMessagesChange?: (modelId: string, hasMessages: boolean) => void;
   onOAuthRequired?: (details?: HostedOAuthRequiredDetails) => void;
@@ -82,6 +96,7 @@ export function MultiModelChatCard({
   reasoningDisplayMode,
   executionConfig,
   hostedContext,
+  hostedOrgModelConfig,
   onSummaryChange,
   onHasMessagesChange,
   onOAuthRequired,
@@ -140,6 +155,7 @@ export function MultiModelChatCard({
   } = useChatSession({
     selectedServers,
     hostedContext,
+    hostedOrgModelConfig,
     executionConfig: {
       ...executionConfig,
       modelId: String(model.id),

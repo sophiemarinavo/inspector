@@ -2600,6 +2600,12 @@ export function ChatTabV2({
                             selectedServerIds: effectiveHostedSelectedServerIds,
                             oauthTokens: effectiveHostedOAuthTokens,
                           }}
+                          // Same config this tab's own `useChatSession` gets:
+                          // a column resolves its model against the list its
+                          // hook builds, so an org-key model picked from
+                          // "Your providers" only resolves here if the column
+                          // sees the org providers too.
+                          hostedOrgModelConfig={hostedOrgModelConfig}
                           onOAuthRequired={handleOAuthRequired}
                           onSummaryChange={handleMultiModelSummaryChange}
                           onHasMessagesChange={

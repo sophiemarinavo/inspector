@@ -58,8 +58,14 @@ const mockUseChatSession = {
   startChatWithMessages,
 };
 
+// Every options object the card hands to `useChatSession`, newest last.
+const mockUseChatSessionOptions: unknown[] = [];
+
 vi.mock("@/hooks/use-chat-session", () => ({
-  useChatSession: () => mockUseChatSession,
+  useChatSession: (options: unknown) => {
+    mockUseChatSessionOptions.push(options);
+    return mockUseChatSession;
+  },
 }));
 
 vi.mock("@/components/chat-v2/thread", () => ({
@@ -206,6 +212,7 @@ function renderCard(
 describe("MultiModelChatCard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseChatSessionOptions.length = 0;
     mockUseChatSession.messages = [];
     mockUseChatSession.setMessages = vi.fn();
     mockUseChatSession.sendMessage = vi.fn();
@@ -223,6 +230,26 @@ describe("MultiModelChatCard", () => {
     mockUseChatSession.isStreaming = false;
     mockUseChatSession.addToolApprovalResponse = vi.fn();
     mockUseChatSession.systemPrompt = "";
+  });
+
+  // A column re-resolves its pinned `modelId` against the model list ITS
+  // `useChatSession` composes. Without the org config that list is the
+  // local-BYOK one, so a "Your providers" model (org-key `claude-fable-5`,
+  // an OpenRouter/Bedrock selection, an org Ollama or custom id) misses the
+  // lookup and the column falls back to a locked definition whose bare-id
+  // classifier answers `ollama` — the server then asks the org for an Ollama
+  // provider it never configured.
+  it("forwards hostedOrgModelConfig to useChatSession alongside the pinned modelId", () => {
+    const hostedOrgModelConfig = {
+      providers: [{ providerKey: "anthropic", enabled: true, hasSecret: true }],
+    };
+
+    renderCard({ hostedOrgModelConfig });
+
+    expect(mockUseChatSessionOptions.at(-1)).toMatchObject({
+      hostedOrgModelConfig,
+      executionConfig: { modelId: String(model.id) },
+    });
   });
 
   it("does not loop when parent passes inline summary handlers", () => {
