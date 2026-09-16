@@ -5844,6 +5844,14 @@ export function PlaygroundMain({
                                 ? { hostId: previewedHostId }
                                 : {}),
                             }}
+                            // Same config the tab-root `useChatSession` and
+                            // the multi-HOST column get. A column resolves
+                            // its model against the list its own hook
+                            // builds, so a "Your providers" model only
+                            // resolves here if the column sees the org
+                            // providers too; without it the bare id falls
+                            // back to an Ollama guess and the turn fails.
+                            hostedOrgModelConfig={hostedOrgModelConfig}
                             personalBrowserEngine={personalBrowserEngineOption}
                             personalComputerEngine={
                               personalComputerEngineOption
